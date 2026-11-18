@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>班級打掃系統</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-slate-100 p-4 font-sans">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    // 模擬 37 人名單與職務
+    const initialStudents = [
+      { id: 1, name: "1號", role: "衛生股長", group: "幹部(免掃)", status: "done", missing: 0 },
+      { id: 2, name: "2號", role: "衛生股長", group: "幹部(免掃)", status: "done", missing: 0 },
+      { id: 3, name: "3號", role: "班長", group: "幹部(免掃)", status: "done", missing: 0 },
+      { id: 4, name: "4號", role: "副班長", group: "幹部(免掃)", status: "done", missing: 0 },
+      { id: 5, name: "5號", role: "環保股長", group: "幹部(免掃)", status: "done", missing: 0 },
+      { id: 6, name: "6號", role: "環保股長", group: "幹部(免掃)", status: "done", missing: 0 },
+      // 內掃黑板與走廊 (8人)
+      ...Array.from({ length: 8 }, (_, i) => ({ id: i + 7, name: `${i + 7}號`, role: i < 6 ? "黑板" : "走廊", group: "內掃區", status: "pending", missing: Math.floor(Math.random() * 4) })),
+      // 內掃其他 (16人)
+      ...Array.from({ length: 16 }, (_, i) => ({ id: i + 15, name: `${i + 15}號`, role: "室內掃拖/回收", group: "內掃區", status: "pending", missing: Math.floor(Math.random() * 2) })),
+      // 外掃區 (7人)
+      ...Array.from({ length: 7 }, (_, i) => ({ id: i + 31, name: `${i + 31}號`, role: "外掃區清潔", group: "外掃區", status: "pending", missing: 0 }))
+    ];
+
+    function App() {
+      const [students, setStudents] = useState(initialStudents);
+      const [activeTab, setActiveTab] = useState('checkin');
+      const [lotteryResult, setLotteryResult] = useState([]);
+
+      // 打卡功能
+      const handleCheckIn = (id) => {
+        setStudents(students.map(s => s.id === id ? { ...s, status: 'review' } : s));
+        alert('已送出審核！請通知衛生股長檢核。');
+      };
+
+      // 衛生股長核准
+      const handleApprove = (id) => {
+        setStudents(students.map(s => s.id === id ? { ...s, status: 'done' } : s));
+      };
+
+      // 抽籤功能
+      const drawLottery = () => {
+        const eligible = students.filter(s => s.status === 'done' && s.group !== '幹部(免掃)');
+        const shuffled = eligible.sort(() => 0.5 - Math.random());
+        setLotteryResult(shuffled.slice(0, 3));
+      };
+
+      return (
+        <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-md p-6">
+          <h1 className="text-3xl font-bold text-center text-blue-700 mb-6">✨ 班級打掃互動系統 (37人)</h1>
+          
+          {/* 導覽列 */}
+          <div className="flex flex-wrap gap-2 mb-6 border-b pb-4">
+            {['checkin', 'upload', 'warning', 'lottery'].map(tab => (
+              <button 
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2 rounded-lg font-bold ${activeTab === tab ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+              >
+                {tab === 'checkin' ? '📋 每日打卡' : tab === 'upload' ? '📁 檢核上傳' : tab === 'warning' ? '⚠️ 未完成通知' : '🎁 獎勵抽籤'}
+              </button>
+            ))}
+          </div>
+
+          {/* 打卡區 */}
+          {activeTab === 'checkin' && (
+            <div>
+              <h2 className="text-xl font-bold mb-4">請點擊您的座號進行打卡 (最晚隔日中午12:00)</h2>
+              {['幹部(免掃)', '內掃區', '外掃區'].map(group => (
+                <div key={group} className="mb-6">
+                  <h3 className="text-lg font-bold text-gray-700 mb-2 border-l-4 border-blue-500 pl-2">{group}</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {students.filter(s => s.group === group).map(student => (
+                      <div key={student.id} className={`p-3 rounded-lg border-2 flex flex-col items-center justify-center ${student.status === 'done' ? 'border-green-500 bg-green-50' : student.status === 'review' ? 'border-yellow-500 bg-yellow-50' : 'border-gray-300 bg-gray-50'}`}>
+                        <span className="font-bold text-lg">{student.name}</span>
+                        <span className="text-xs text-gray-500 mb-2">{student.role}</span>
+                        {student.status === 'pending' && <button onClick={() => handleCheckIn(student.id)} className="bg-blue-500 text-white text-sm px-3 py-1 rounded">我要打卡</button>}
+                        {student.status === 'review' && <button onClick={() => handleApprove(student.id)} className="bg-yellow-500 text-white text-sm px-3 py-1 rounded">股長核准</button>}
+                        {student.status === 'done' && <span className="text-green-600 font-bold text-sm">✅ 已完成</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* 上傳區 */}
+          {activeTab === 'upload' && (
+            <div className="text-center p-10 bg-blue-50 rounded-lg">
+              <h2 className="text-2xl font-bold mb-4">衛生股長專區</h2>
+              <p className="mb-6">請將每日 (8:00~16:00) 的打掃檢核照片上傳至雲端資料夾</p>
+              <a href="https://drive.google.com/drive/u/0/folders/1sZQ3WDFP7StEUhPlyOTZ7Sxopw2tPNCh" target="_blank" className="bg-blue-600 text-white px-6 py-3 rounded-lg text-lg font-bold hover:bg-blue-700">👉 點擊開啟 Google Drive 上傳區</a>
+            </div>
+          )}
+
+          {/* 警告區 */}
+          {activeTab === 'warning' && (
+            <div>
+              <h2 className="text-xl font-bold mb-4 text-red-600">⚠️ 累積未完成達 3 次名單</h2>
+              <div className="space-y-3">
+                {students.filter(s => s.missing >= 3).map(student => (
+                  <div key={student.id} className="bg-red-50 border-l-4 border-red-500 p-4 flex justify-between items-center rounded-r-lg">
+                    <div>
+                      <span className="font-bold text-lg mr-2">{student.name}</span>
+                      <span className="text-gray-600">負責區域: {student.role}</span>
+                      <p className="text-sm text-red-500 mt-1">已累積 {student.missing} 次未完成，請即刻改善。</p>
+                    </div>
+                    <button className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm">通知家長/導師</button>
+                  </div>
+                ))}
+                {students.filter(s => s.missing >= 3).length === 0 && <p className="text-green-600 font-bold">目前全班表現良好，無人違規！</p>}
+              </div>
+            </div>
+          )}
+
+          {/* 抽籤區 */}
+          {activeTab === 'lottery' && (
+            <div className="text-center p-8">
+              <h2 className="text-2xl font-bold mb-4">🎉 月初獎勵抽籤 (抽出3名)</h2>
+              <p className="text-gray-600 mb-6">僅限今日完成檢核的同學擁有抽籤資格</p>
+              <button onClick={drawLottery} className="bg-purple-600 text-white px-8 py-3 rounded-full text-xl font-bold hover:bg-purple-700 shadow-lg mb-8">開始抽籤 🎲</button>
+              
+              {lotteryResult.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {lotteryResult.map((student, i) => (
+                    <div key={i} className="bg-gradient-to-br from-yellow-100 to-yellow-300 p-6 rounded-xl shadow border-2 border-yellow-400">
+                      <div className="text-3xl mb-2">🏆</div>
+                      <h3 className="font-bold text-xl">{student.name}</h3>
+                      <p className="text-sm text-gray-700 mt-2">請選擇一項獎勵：</p>
+                      <select className="mt-2 w-full p-1 rounded border">
+                        <option>請選擇...</option>
+                        <option>A. 全班鼓掌</option>
+                        <option>B. 優先選座位</option>
+                        <option>C. 獎勵金 50 元</option>
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
